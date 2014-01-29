@@ -1,0 +1,65 @@
+*************************************************************************************
+
+11:22:33:44:55:66
+Catch  TX Power for G Mode Success
+Initial Measurement
+The Power Value is :  9.45
+The EVM Value is :  -33.80
+The Frequency error Value is :  -1384.27
+
+Tx_Power_Up_G 3
+The Power Value is :  12.21
+The EVM Value is :  -32.12
+The Frequency error Value is :  -1471.31
+
+TX_Power_UP_G 1
+The Power Value is :  12.24
+The EVM Value is :  -32.44
+The Frequency error Value is :  -1764.58
+
+TX_Power_UP_G 1
+The Power Value is :  14.82
+The EVM Value is :  -29.55
+The Frequency error Value is :  -1387.72
+
+*************************************************************************************
+The Power at 0 level is 15.10 
+The evm at 0 level is -29.90 
+The freqerr at 0 level is -1428.44 
+
+The Power at 1 level is 15.15 
+The evm at 1 level is -30.28 
+The freqerr at 1 level is -1468.15 
+
+The Power at 2 level is 11.86 
+The evm at 2 level is -33.55 
+The freqerr at 2 level is -1444.30 
+
+The Power at 3 level is 8.84 
+The evm at 3 level is -34.18 
+The freqerr at 3 level is -1426.92 
+
+The Power at 4 level is 5.73 
+The evm at 4 level is -34.04 
+The freqerr at 4 level is -1415.64 
+
+*************************************************************************************
+
+11:22:33:44:55:66
+Catch Power Fail: EVM or Power not in desired Range
+Initial Measurement
+The Power Value is :  11.34
+The EVM Value is :  -20.60
+The Frequency error Value is :  -1398.68
+
+Tx_Power_Up_B 5
+The Power Value is :  14.74
+The EVM Value is :  -20.79
+The Frequency error Value is :  -1377.39
+
+Tx_Power_Up_B 1
+The Power Value is :  15.44
+The EVM Value is :  -21.20
+The Frequency error Value is :  -1368.60
+
+*************************************************************************************

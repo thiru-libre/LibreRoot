@@ -1,0 +1,148 @@
+#include <iostream>
+using namespace std;
+
+#include <string.h>
+#include "WCSerialport.h"
+#include "lib_typedefs.h"
+#include "conio.h"
+#include "iqapi.h"
+#include "iqapidefines.h"
+#include "iqapihndlbase.h"
+#include "iqapihndlmatlab.h"
+#include "windows.h"
+#include "WCSerialport.h"
+
+// Comport name
+#define COM_PORT_NAME "COM4"
+// Baud rate
+#define BAUD_RATE 115200 
+
+WSerialport Port_obj;
+FILE *pfile = NULL;
+char *filename = "C:\\Session.log";
+char RxBuff_Parsing[500];
+char RxBuff_as8[500];
+bool StartForParsing = false;
+
+
+void delay(unsigned int i)
+{
+	while(i--);
+}
+
+
+DWORD readComPort()
+{
+
+	RxBuff_as8[0] = '\0';
+	unsigned long ReadCnt = 0;
+	pfile = fopen(filename, "a+");
+
+	if (pfile == NULL)
+	{
+		printf("Error reopening the file\n");
+	}
+	while(1)	
+	{
+		Port_obj.ReadPort(RxBuff_as8,500,&ReadCnt);
+
+		//if (0 != strcmp(RxBuff_as8,"\0"))
+		{
+			//RxBuff_as8[ReadCnt] = '\0';
+			//printf("Read count : %d\n",ReadCnt);
+			unsigned int i =0;
+
+			for (i =0; i < ReadCnt; i++)
+			{
+				fprintf(pfile,"%c",RxBuff_as8[i]);
+				//putc('\0',pfile);
+				//delay(100000);
+				if(StartForParsing)
+					RxBuff_Parsing[i]=RxBuff_as8[i];
+				printf("%c",RxBuff_as8[i]);
+			}
+			RxBuff_as8[0] = '\0';
+			ReadCnt = 0;
+		}
+	}
+	fclose(pfile);
+	return 0;
+}
+
+void WriteCOMPort(char * DataToSend)
+{
+
+	unsigned int i=0;
+	while(DataToSend[i]!='\0')
+	{
+		Port_obj.WritePort(&DataToSend[i],1);
+		i++;
+	}
+	Port_obj.WritePort("\r",1);
+}
+
+
+int main(void)
+{
+    char *PortName_u8 = COM_PORT_NAME;
+	printf("In Main \r\n");
+	char *InputFileName = "C:\\InputConf.txt";
+	FILE *InputFileHdle = NULL;
+	char RxBuff_as8[500];				//To be used as ReadPort Buffer
+	RxBuff_as8[0] = '\0';
+	unsigned long ReadCnt = 0;			//Read Count of buffer data
+
+	// Open the result file in write mode 
+	pfile = fopen(InputFileName, "w+"); 
+	// Checking for valid file
+	if(pfile == NULL)
+	{
+		printf("Error opening %s for writing. Program terminated.", filename);
+		exit(0);
+	}
+
+	//Open the COM port
+	int OpenPortNum=Port_obj.OpenPort(PortName_u8, BAUD_RATE, NONBLOCK);
+	if (0 !=OpenPortNum)
+	{
+		fprintf(pfile,"\tOpening port is failed\n");
+		exit(0);
+	}	
+	else
+		printf("opening port success %d \r\n",num);
+
+	//HANDLE PortReadThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&readComPort, NULL, 0,NULL);
+	//delay(800000000);
+
+
+	StartForParsing=true;
+	WriteCOMPort("netcfg");
+	//Sleep(50);
+	Port_obj.ReadPort(RxBuff_Parsing,500,&ReadCnt);
+	StartForParsing=false;
+	unsigned int h=0;
+	//while(RxBuff_Parsing[h]!='\0')
+	//{
+		//printf("%c",RxBuff_Parsing[h]);
+		//h++;
+	//}
+	
+	char * str="SMSC8700";
+	char * pch=strstr(str,RxBuff_as8);
+	if (pch!=NULL)
+		printf("Found at %s \r\n",pch);
+	else 
+
+		printf("Not Found \r\n");
+	RxBuff_as8[0] = '\0';
+	Port_obj.ClosePort();
+	fclose(pfile);
+	printf("Test Over \r\n");
+	getch();
+
+	return 0;
+}
+
+  
+
+

@@ -1,0 +1,284 @@
+// TXTest.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+#include<string.h>
+#include "conio.h"
+#include "iqapi.h"
+#include "iqapidefines.h"
+#include "iqapihndlbase.h"
+#include "iqapihndlmatlab.h"
+#include "windows.h"
+#include "WCSerialport.h"
+using namespace std;
+
+#define IP "192.168.100.254"
+
+#define RF_LEFT_PORT 2
+#define CHANNEL6 2462e
+#define CHANNEL1 2412e6
+#define SAMPLING_FREQ_HZ 80e6
+#define SAMPLING_TIME 1e-3
+#define OFDM_SIGNAl 1
+#define SIGNAL_11B 2
+#define SIGNAl_11N 3
+#define FILE_PATH "D:\\TestSignal.sig"
+WSerialport Port_obj;
+
+// Comport name
+#define COM_PORT_NAME "COM4"
+// Baud rate
+#define BAUD_RATE 115200
+//for non block reading -wait for device to return data for given time out in millisecond
+#define NONBLOCK 2 
+
+#define IQMEASURE_API extern "C" __declspec(dllimport)
+
+FILE *pfile = NULL;
+iqapiHndl	*hndl = NULL;
+iqapiResultOFDM	*resultOfdm = NULL;
+iqapiAnalysisOFDM *analysisOfdm=NULL;
+iqapiAnalysis11b *analysis11b=NULL;
+iqapiResult11b	*result11b = NULL;
+char* filename="D:\\UARTLOGS.txt";
+char RxBuff_as8[500];
+
+bool BTuningRequired=false;
+bool GTuningRequired=false;
+bool LibsInitialized=false;
+int errNO=0;
+int openCOMPort();
+void delay(unsigned int);
+int ConnectToIQView();
+
+
+void readComPort()
+{	
+	RxBuff_as8[0] = '\0';
+	unsigned long ReadCnt = 0;
+	pfile = fopen(filename, "a+");
+	if (pfile == NULL)
+	{
+		printf("Error reopening the file\n");
+	}
+	//while(1)	
+	//{
+		Port_obj.ReadPort(RxBuff_as8,500,&ReadCnt);
+		
+		//if (0 != strcmp(RxBuff_as8,"\0"))
+		//{
+			//RxBuff_as8[ReadCnt] = '\0';
+			printf("Read count : %d\n",ReadCnt);
+			unsigned int i =0;
+			for (i =0; i < ReadCnt; i++)
+			{
+				fprintf(pfile,"%c",RxBuff_as8[i]);
+				//putc('\0',pfile);
+				//delay(100000);
+				printf("%c",RxBuff_as8[i]);
+			}
+			RxBuff_as8[0] = '\0';
+			ReadCnt = 0;
+		//}
+	
+	fclose(pfile);
+	//return 0;
+}
+DWORD writeComPort(char * data)
+{
+	unsigned int LenOfData=strlen(data);
+	Port_obj.WritePort(data,LenOfData);
+	Port_obj.WritePort("\r",1);
+	//Sleep(200);
+	return 0;
+}
+
+void delay(unsigned int i)
+{
+	while(i--);
+}
+
+int openCOMPort()
+{	
+	 char *PortName_u8 = COM_PORT_NAME;
+	errNO =Port_obj.OpenPort(PortName_u8, BAUD_RATE, NONBLOCK);
+	//printf("\tOpening port is Succeded\n");
+	printf("Return value for opening the port : %d\r\n",errNO);
+	return errNO;
+}
+
+/*int ConnectToIQView()
+{
+	//Initialize IQView API Libraries
+	int errNO=iqapiInit();
+
+	if(errNO!=IQAPI_ERR_OK)
+	{
+		printf("IQ View Libraries Not Initalized \r\n");
+		return errNO;
+	}
+	else
+	{
+		printf("IQ View Libraries Initalized Successfully \r\n");
+		if(hndl)
+		{
+			delete hndl;
+			hndl=NULL;
+		}
+		hndl = new iqapiHndl();
+		
+		//Establish Connection to IQView over the IP 192.168.100.254
+		errNO=hndl->ConInit(IP);
+	}
+	return errNO;
+}
+
+int setIQViewRX()
+{
+	hndl->rx->powerMode = IQV_VSA_TYPE_1;
+	hndl->rx->vsa[0]->port=IQV_PORT_RIGHT;
+	hndl->tx->vsg[0]->port=IQV_PORT_LEFT;
+	hndl->rx->rxMode = IQV_INPUT_ADC_RF;
+	hndl->rx->rfFreqHz=CHANNEL1;
+	hndl->rx->vsa[0]->rfAmplDb=-10;
+	hndl->rx->freqShiftHz=0;
+	hndl->rx->vsa[0]->extAttenDb=0;
+	hndl->rx->triggerPreTime=10e-6;
+	hndl->rx->triggerLevelDb=-25;
+	hndl->rx->triggerType=IQV_TRIG_TYPE_IF2_NO_CAL;
+	hndl->rx->samplingTimeSecs=SAMPLING_TIME;
+	hndl->rx->sampleFreqHz=SAMPLING_FREQ_HZ;
+	hndl->rx->vsa[0]->enabled=IQV_RF_ENABLED;
+	hndl->SetTxRx();
+}
+
+int InitializeAnalysisClasses()
+{
+
+	//analysis11bg = new iqapiAnalysisOFDM();
+}
+
+int CaptureData()
+{
+	hndl->Agc(TRUE);
+	errNO = hndl->Capture();
+	printf("The Capture Status Return Code :%d \r\n",errNO);
+	printf("hndl->data->length[0]:%d \r\n",hndl->data->length[0]);
+	hndl->data->Save(FILE_PATH);
+	return errNO;
+}
+int AnalyseOFDM()
+{	
+	analysisOfdm = new iqapiAnalysisOFDM();
+	analysis11b = new iqapiAnalysis11b();
+	analysisOfdm->ph_corr_mode=IQV_PH_CORR_SYM_BY_SYM;
+	analysisdm->ch_estimate = IQV_CH_EST_RAW;
+	analysisdm->sym_tim_corr = IQV_SYM_TIM_ON;
+	alysisOfdm->freq_sync = IQV_FREQ_SYNC_LONG_TRAIN;
+	analysisOfdm->ampl_track = IQV_AMPL_TRACK_OFF;
+	hndl->analysis = dynamic_cast<iqapiAnalysis *>(analysisOfdm);
+	errNO=hndl->Analyze();
+	if(errNO==0)
+	{
+		printf("Analyse Success \r\n");
+		printf("HNDL last error :%s \r\n",hndl->lastErr);
+	}
+}
+
+int Analyse11b()
+{
+}
+*/
+int CheckTuning()
+{
+	char * data="netcfg" ;
+
+	writeComPort(data);
+
+
+	//readComPort();
+	int i=0;
+	while(RxBuff_as8[i]='\0')
+	{
+		printf("%c",RxBuff_as8[i]);
+		i++;
+	}
+
+	return 0;
+}
+int _tmain(int argc, _TCHAR* argv[])
+{
+	char ch;
+
+	printf("IN MAIN \r\n");
+
+	//Open the COM Port
+	errNO=openCOMPort();
+	if(errNO!=0)
+	{
+		printf("Failed to OPen the COM Port : \r\n");
+		exit(0);
+	}
+	
+
+	//Thread for Reading COM Port
+	//HANDLE PortReadThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&readComPort, NULL, 0,NULL);
+
+	//Establish Connection to IQView
+	/*errNO=ConnectToIQView();
+	
+		if(errNO!=IQAPI_ERR_OK)
+		{
+			printf("Connection Not established with IQView\r\n");
+			exit(0);
+		}
+
+	//set RX setting in IQView
+	setIQViewRX();
+	
+	//Initialize the Analysis Classes
+	InitializeAnalysisClasses();*/
+
+	//Check gMode and bMode tuning already done
+	CheckTuning();
+	printf("Enter Something to start TX \r\n:");
+	getch();
+
+	//Call Capture
+		/*errNO=CaptureData();
+		
+			if(errNO!=0)
+			{
+				printf("Capture Not Success \r\n");
+				exit(0)
+			}
+			//printf("hndl-data Address :0x%x \r\n",hndl->data);
+			//if (hndl->data->length[0]==0)
+				//printf("Capture Failure length Zero\r\n");
+			//hndl->data->Save(FILE_PATH);
+		
+			printf("Analysis Over \r\n");
+
+			//hndl->results=NEW_OFDM_RESULTS; 
+			printf("hndl-result Address :0x%x \r\n",hndl->results);
+			
+			if (dynamic_cast<iqapiResultOFDM *>(hndl->results))	
+			{
+				printf("hndl-result Address :0x%x \r\n",hndl->results);
+				resultOfdm = dynamic_cast<iqapiResultOFDM *>(hndl->results);
+			}
+			printf("Result data %c:",hndl->results->type);
+			if (resultOfdm->evmAll && resultOfdm->evmAll->length > 0)
+				printf("EVM Vaue is : %.3f : %.3f: %.3f \r\n",*(resultOfdm->evmAll->real),resultOfdm->evmAll->real[0],resultOfdm->evmAll->real[2]);
+			if (resultOfdm->rmsPowerNoGap && resultOfdm->rmsPowerNoGap->length > 0)
+				printf("RMS Power NO GAP Vaue is : %.3f \r\n",resultOfdm->rmsPowerNoGap->real[0]);
+
+			// hndl->analysis = NULL;
+			 if (hndl->ConValid())
+					hndl->ConClose();
+			if (hndl)	{ hndl->analysis = NULL; }
+			if (analysisOfdm) {delete analysisOfdm; analysisOfdm = NULL; }
+			if (resultOfdm) {delete resultOfdm; resultOfdm = NULL; }
+			getch();
+				//if (hndl) { delete hndl; hndl = NULL; }*/
+}
